@@ -38,3 +38,33 @@ class Bomba:
     @property
     def activa(self):
         return len(self.destinos_no_llenos()) > 0
+
+
+class Grafo:
+    """Grafo de la simulación: bombas (fuentes) y tinacos (destinos)."""
+
+    def __init__(self, bombas, tinacos):
+        self.bombas = list(bombas)
+        self.tinacos = list(tinacos)
+        self.tiempo = 0.0
+
+    @property
+    def terminado(self):
+        return all(t.lleno for t in self.tinacos)
+
+    def paso(self, dt):
+        if dt <= 0:
+            raise ValueError("dt debe ser positivo")
+        # Acumular los aportes antes de aplicarlos, para que un tinaco
+        # compartido (alimentado por varias bombas) sume todos los caudales.
+        aportes = {id(t): 0.0 for t in self.tinacos}
+        for bomba in self.bombas:
+            objetivos = bomba.destinos_no_llenos()
+            if not objetivos:
+                continue
+            litros = bomba.caudal * dt / len(objetivos)
+            for t in objetivos:
+                aportes[id(t)] += litros
+        for t in self.tinacos:
+            t.agregar(aportes[id(t)])
+        self.tiempo += dt

@@ -57,3 +57,57 @@ def test_bomba_caudal_invalido():
     t = Tinaco("T1", 1000)
     with pytest.raises(ValueError):
         Bomba("B1", 0, [t])
+
+
+from simulacion import Grafo
+
+
+def test_paso_reparte_caudal_entre_destinos_no_llenos():
+    t1 = Tinaco("T1", 1000)
+    t2 = Tinaco("T2", 1000)
+    b1 = Bomba("B1", 50, [t1, t2])
+    g = Grafo([b1], [t1, t2])
+    g.paso(1.0)
+    assert t1.nivel == 25
+    assert t2.nivel == 25
+    assert g.tiempo == 1.0
+
+
+def test_paso_tinaco_compartido_recibe_de_dos_bombas():
+    t1 = Tinaco("T1", 1000)
+    t2 = Tinaco("T2", 1000)
+    t3 = Tinaco("T3", 1000)
+    b1 = Bomba("B1", 50, [t1, t2])
+    b2 = Bomba("B2", 40, [t2, t3])
+    g = Grafo([b1, b2], [t1, t2, t3])
+    g.paso(1.0)
+    assert t2.nivel == 45
+    assert t1.nivel == 25
+    assert t3.nivel == 20
+
+
+def test_paso_todo_el_caudal_al_unico_destino_no_lleno():
+    t1 = Tinaco("T1", 1000, nivel=1000)
+    t2 = Tinaco("T2", 1000)
+    b1 = Bomba("B1", 50, [t1, t2])
+    g = Grafo([b1], [t1, t2])
+    g.paso(1.0)
+    assert t2.nivel == 50
+
+
+def test_terminado_cuando_todos_llenos():
+    t1 = Tinaco("T1", 100)
+    b1 = Bomba("B1", 1000, [t1])
+    g = Grafo([b1], [t1])
+    assert not g.terminado
+    g.paso(1.0)
+    assert t1.nivel == 100
+    assert g.terminado
+
+
+def test_paso_dt_invalido():
+    t1 = Tinaco("T1", 1000)
+    b1 = Bomba("B1", 50, [t1])
+    g = Grafo([b1], [t1])
+    with pytest.raises(ValueError):
+        g.paso(0)
