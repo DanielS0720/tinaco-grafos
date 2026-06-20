@@ -35,22 +35,43 @@ def test_tinaco_agregar_negativo_invalido():
         t.agregar(-5)
 
 
-from simulacion import Bomba
+import random as _random
+from simulacion import Bomba, ENCENDIDA, REPOSO, FALLO
 
 
-def test_bomba_activa_con_destino_no_lleno():
+def test_bomba_estado_inicial_reposo():
     t = Tinaco("T1", 1000)
     b = Bomba("B1", 50, [t])
-    assert b.activa
-    assert b.destinos_no_llenos() == [t]
-
-
-def test_bomba_inactiva_cuando_destinos_llenos():
-    t = Tinaco("T1", 1000)
-    t.agregar(1000)
-    b = Bomba("B1", 50, [t])
+    assert b.estado == REPOSO
     assert not b.activa
-    assert b.destinos_no_llenos() == []
+
+
+def test_actualizar_estado_arranque_por_histeresis():
+    t = Tinaco("T1", 1000)  # vacío: 0% < 30%
+    b = Bomba("B1", 50, [t])
+    b.actualizar_estado(1.0, 0.0, 5.0, 0.30, _random.Random(0))
+    assert b.estado == ENCENDIDA
+    assert b.activa
+
+
+def test_actualizar_estado_paro_por_histeresis():
+    t = Tinaco("T1", 1000, nivel=1000)  # lleno
+    b = Bomba("B1", 50, [t])
+    b.estado = ENCENDIDA
+    b.actualizar_estado(1.0, 0.0, 5.0, 0.30, _random.Random(0))
+    assert b.estado == REPOSO
+
+
+def test_actualizar_estado_fallo_forzado_y_recuperacion():
+    t = Tinaco("T1", 1000)
+    b = Bomba("B1", 50, [t])
+    b.actualizar_estado(1.0, 1.0, 5.0, 0.30, _random.Random(0))  # prob 1.0 -> falla
+    assert b.estado == FALLO
+    assert b.tiempo_falla_restante == 5.0
+    for _ in range(5):  # 5 segundos sin volver a fallar
+        b.actualizar_estado(1.0, 0.0, 5.0, 0.30, _random.Random(0))
+    assert b.estado != FALLO
+    assert b.estado in (REPOSO, ENCENDIDA)
 
 
 def test_bomba_caudal_invalido():

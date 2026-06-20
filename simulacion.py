@@ -1,3 +1,9 @@
+# Estados posibles de una bomba (color del LED en las vistas).
+ENCENDIDA = "encendida"  # LED verde: bombeando
+REPOSO = "reposo"        # LED amarillo: sana pero inactiva
+FALLO = "fallo"          # LED rojo: averiada
+
+
 class Tinaco:
     """Nodo destino del grafo: un tinaco con capacidad, nivel y consumo (L/s)."""
 
@@ -31,7 +37,11 @@ class Tinaco:
 
 
 class Bomba:
-    """Nodo fuente del grafo: bombea agua a una lista de tinacos destino."""
+    """Nodo fuente del grafo: bombea agua a sus tinacos destino.
+
+    Tiene una máquina de estados (encendida/reposo/fallo) controlada por
+    histéresis de nivel y por fallos aleatorios con autorrecuperación.
+    """
 
     def __init__(self, nombre, caudal, destinos):
         if caudal <= 0:
@@ -39,13 +49,37 @@ class Bomba:
         self.nombre = nombre
         self.caudal = float(caudal)
         self.destinos = list(destinos)
+        self.estado = REPOSO
+        self.tiempo_falla_restante = 0.0
 
     def destinos_no_llenos(self):
         return [t for t in self.destinos if not t.lleno]
 
     @property
     def activa(self):
-        return len(self.destinos_no_llenos()) > 0
+        return self.estado == ENCENDIDA
+
+    def actualizar_estado(self, dt, prob_falla, duracion_falla,
+                          umbral_arranque, aleatorio):
+        # 1. Si está averiada, descontar el temporizador de recuperación.
+        if self.estado == FALLO:
+            self.tiempo_falla_restante -= dt
+            if self.tiempo_falla_restante > 0:
+                return
+            self.tiempo_falla_restante = 0.0
+            self.estado = REPOSO
+        # 2. Una bomba sana puede averiarse al azar.
+        if aleatorio.random() < prob_falla:
+            self.estado = FALLO
+            self.tiempo_falla_restante = duracion_falla
+            return
+        # 3. Histéresis de arranque/paro.
+        if self.estado == REPOSO and any(
+            t.porcentaje < umbral_arranque for t in self.destinos
+        ):
+            self.estado = ENCENDIDA
+        elif self.estado == ENCENDIDA and all(t.lleno for t in self.destinos):
+            self.estado = REPOSO
 
 
 class Grafo:
