@@ -1,7 +1,21 @@
+from simulacion import ENCENDIDA, REPOSO, FALLO
+
 _FALTAN_DEPS = (
     "Faltan dependencias para la vista gráfica. Instálalas con:\n"
     "    pip install matplotlib networkx"
 )
+
+# Color del LED (y del nodo) de la bomba según su estado.
+_COLOR_LED = {
+    ENCENDIDA: "limegreen",
+    REPOSO: "gold",
+    FALLO: "red",
+}
+
+
+def _color_led(estado):
+    """Color del LED de la bomba según su estado."""
+    return _COLOR_LED.get(estado, "gray")
 
 
 def construir_red(grafo):
@@ -31,11 +45,12 @@ def _posiciones(grafo):
     return posiciones
 
 
-def correr(grafo, dt=1.0, intervalo_ms=200, max_pasos=10000):
-    """Anima la simulación en una ventana de matplotlib."""
+def correr(grafo, dt=1.0, intervalo_ms=200):
+    """Anima la simulación en una ventana de matplotlib (hasta cerrar la ventana)."""
     try:
         import matplotlib.pyplot as plt
         from matplotlib import cm
+        from matplotlib.lines import Line2D
         from matplotlib.animation import FuncAnimation
         import networkx as nx
     except ImportError as excepcion:  # pragma: no cover
@@ -45,10 +60,20 @@ def correr(grafo, dt=1.0, intervalo_ms=200, max_pasos=10000):
     posiciones = _posiciones(grafo)
     figura, eje = plt.subplots(figsize=(8, 5))
 
+    leyenda = [
+        Line2D([0], [0], marker="o", color="w", markerfacecolor="limegreen",
+               markersize=12, label="Encendida"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor="gold",
+               markersize=12, label="Reposo"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor="red",
+               markersize=12, label="Fallo"),
+    ]
+
     def dibujar(_cuadro):
         eje.clear()
         eje.set_title(f"Llenado de tinacos — t = {grafo.tiempo:.0f} s")
         eje.axis("off")
+        eje.set_xlim(-0.35, 1.2)
 
         colores, etiquetas = [], {}
         for nodo in red.nodes:
@@ -59,8 +84,8 @@ def correr(grafo, dt=1.0, intervalo_ms=200, max_pasos=10000):
                 etiquetas[nodo] = f"{nodo}\n{t.porcentaje * 100:.0f}%"
             else:
                 b = next(x for x in grafo.bombas if x.nombre == nodo)
-                colores.append("tab:green" if b.activa else "tab:gray")
-                etiquetas[nodo] = f"{nodo}\n{'ON' if b.activa else 'OFF'}"
+                colores.append(_color_led(b.estado))
+                etiquetas[nodo] = f"{nodo}\n{b.estado.upper()}"
 
         nx.draw_networkx_edges(red, posiciones, ax=eje, arrows=True,
                                arrowstyle="-|>", min_target_margin=20)
@@ -69,11 +94,17 @@ def correr(grafo, dt=1.0, intervalo_ms=200, max_pasos=10000):
         nx.draw_networkx_labels(red, posiciones, labels=etiquetas, ax=eje,
                                 font_size=9)
 
-        if not grafo.terminado and dibujar.pasos < max_pasos:
-            grafo.paso(dt)
-            dibujar.pasos += 1
+        # LED de cada bomba, a la izquierda de su nodo.
+        for bomba in grafo.bombas:
+            x, y = posiciones[bomba.nombre]
+            eje.scatter([x - 0.15], [y], s=300, color=_color_led(bomba.estado),
+                        edgecolors="black", zorder=3)
 
-    dibujar.pasos = 0
+        eje.legend(handles=leyenda, loc="lower center", ncol=3,
+                   title="LED de la bomba")
+
+        grafo.paso(dt)
+
     _animacion = FuncAnimation(figura, dibujar, interval=intervalo_ms,
                                cache_frame_data=False)
     plt.show()

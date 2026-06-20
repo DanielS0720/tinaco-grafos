@@ -1,4 +1,4 @@
-from simulacion import crear_grafo_default
+from simulacion import crear_grafo_default, ENCENDIDA, REPOSO, FALLO
 from vista_terminal import barra, render
 
 
@@ -25,9 +25,23 @@ def test_render_incluye_tinacos_bombas_y_tiempo():
     assert "Tiempo" in salida
 
 
-def test_render_muestra_bomba_off_cuando_inactiva():
-    g = crear_grafo_default()
-    for t in g.tinacos:
-        t.agregar(t.capacidad)
+def test_render_muestra_estado_reposo():
+    g = crear_grafo_default(semilla=0)
+    for b in g.bombas:
+        b.estado = REPOSO
     salida = render(g)
-    assert "OFF" in salida
+    assert "REPOSO" in salida
+
+
+def test_render_muestra_estado_fallo():
+    g = crear_grafo_default(semilla=0)
+    g.bombas[0].estado = FALLO
+    salida = render(g)
+    assert "FALLO" in salida
+
+
+def test_render_muestra_estado_encendida():
+    g = crear_grafo_default(semilla=0)
+    g.bombas[0].estado = ENCENDIDA
+    salida = render(g)
+    assert "ENCENDIDA" in salida
