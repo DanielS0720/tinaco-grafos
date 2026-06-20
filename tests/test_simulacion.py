@@ -131,3 +131,26 @@ def test_grafo_default_topologia():
     t2_b1 = next(t for t in b1.destinos if t.nombre == "T2")
     t2_b2 = next(t for t in b2.destinos if t.nombre == "T2")
     assert t2_b1 is t2_b2
+
+
+def test_tinaco_consumo_default_cero():
+    t = Tinaco("T1", 1000)
+    assert t.consumo == 0.0
+
+
+def test_tinaco_consumir_baja_nivel():
+    t = Tinaco("T1", 1000, nivel=500)
+    t.consumir(200)
+    assert t.nivel == 300
+
+
+def test_tinaco_consumir_no_baja_de_cero():
+    t = Tinaco("T1", 1000, nivel=100)
+    t.consumir(250)
+    assert t.nivel == 0
+
+
+def test_tinaco_consumir_negativo_invalido():
+    t = Tinaco("T1", 1000, nivel=100)
+    with pytest.raises(ValueError):
+        t.consumir(-5)

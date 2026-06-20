@@ -1,12 +1,15 @@
 class Tinaco:
-    """Nodo destino del grafo: un tinaco con capacidad y nivel en litros."""
+    """Nodo destino del grafo: un tinaco con capacidad, nivel y consumo (L/s)."""
 
-    def __init__(self, nombre, capacidad, nivel=0.0):
+    def __init__(self, nombre, capacidad, nivel=0.0, consumo=0.0):
         if capacidad <= 0:
             raise ValueError("la capacidad debe ser positiva")
+        if consumo < 0:
+            raise ValueError("el consumo no puede ser negativo")
         self.nombre = nombre
         self.capacidad = float(capacidad)
         self.nivel = float(nivel)
+        self.consumo = float(consumo)
 
     @property
     def porcentaje(self):
@@ -20,6 +23,11 @@ class Tinaco:
         if litros < 0:
             raise ValueError("los litros a agregar no pueden ser negativos")
         self.nivel = min(self.capacidad, self.nivel + litros)
+
+    def consumir(self, litros):
+        if litros < 0:
+            raise ValueError("los litros a consumir no pueden ser negativos")
+        self.nivel = max(0.0, self.nivel - litros)
 
 
 class Bomba:
