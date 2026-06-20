@@ -21,3 +21,13 @@ def test_parser_vista_invalida():
     import pytest
     with pytest.raises(SystemExit):
         construir_parser().parse_args(["--vista", "web"])
+
+
+def test_parser_semilla_default_none():
+    args = construir_parser().parse_args([])
+    assert args.semilla is None
+
+
+def test_parser_semilla_personalizada():
+    args = construir_parser().parse_args(["--semilla", "7"])
+    assert args.semilla == 7

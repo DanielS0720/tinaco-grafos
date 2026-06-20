@@ -19,12 +19,18 @@ def construir_parser():
         default=1.0,
         help="Paso de tiempo en segundos (default: 1.0).",
     )
+    analizador.add_argument(
+        "--semilla",
+        type=int,
+        default=None,
+        help="Semilla aleatoria para reproducir la simulación (default: None).",
+    )
     return analizador
 
 
 def main(argumentos=None):
     opciones = construir_parser().parse_args(argumentos)
-    grafo = crear_grafo_default()
+    grafo = crear_grafo_default(semilla=opciones.semilla)
     if opciones.vista == "terminal":
         import vista_terminal
 
