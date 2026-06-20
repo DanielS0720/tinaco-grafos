@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 from simulacion import ENCENDIDA, REPOSO, FALLO
@@ -47,8 +48,19 @@ def _limpiar():
     os.system("cls" if os.name == "nt" else "clear")
 
 
+def _preparar_consola():
+    """Configura la consola para UTF-8 y colores ANSI (necesario en Windows)."""
+    if os.name == "nt":
+        os.system("")  # habilita el procesamiento de secuencias ANSI en Windows
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+
+
 def correr(grafo, dt=1.0, intervalo=0.5):
     """Anima la simulación en la terminal en loop infinito (Ctrl+C para salir)."""
+    _preparar_consola()
     try:
         while True:
             _limpiar()
