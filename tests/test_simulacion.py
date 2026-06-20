@@ -87,7 +87,7 @@ def test_paso_reparte_caudal_entre_destinos_no_llenos():
     t1 = Tinaco("T1", 1000)
     t2 = Tinaco("T2", 1000)
     b1 = Bomba("B1", 50, [t1, t2])
-    g = Grafo([b1], [t1, t2])
+    g = Grafo([b1], [t1, t2], prob_falla=0.0)
     g.paso(1.0)
     assert t1.nivel == 25
     assert t2.nivel == 25
@@ -100,7 +100,7 @@ def test_paso_tinaco_compartido_recibe_de_dos_bombas():
     t3 = Tinaco("T3", 1000)
     b1 = Bomba("B1", 50, [t1, t2])
     b2 = Bomba("B2", 40, [t2, t3])
-    g = Grafo([b1, b2], [t1, t2, t3])
+    g = Grafo([b1, b2], [t1, t2, t3], prob_falla=0.0)
     g.paso(1.0)
     assert t2.nivel == 45
     assert t1.nivel == 25
@@ -111,7 +111,7 @@ def test_paso_todo_el_caudal_al_unico_destino_no_lleno():
     t1 = Tinaco("T1", 1000, nivel=1000)
     t2 = Tinaco("T2", 1000)
     b1 = Bomba("B1", 50, [t1, t2])
-    g = Grafo([b1], [t1, t2])
+    g = Grafo([b1], [t1, t2], prob_falla=0.0)
     g.paso(1.0)
     assert t2.nivel == 50
 
@@ -119,7 +119,7 @@ def test_paso_todo_el_caudal_al_unico_destino_no_lleno():
 def test_terminado_cuando_todos_llenos():
     t1 = Tinaco("T1", 100)
     b1 = Bomba("B1", 1000, [t1])
-    g = Grafo([b1], [t1])
+    g = Grafo([b1], [t1], prob_falla=0.0)
     assert not g.terminado
     g.paso(1.0)
     assert t1.nivel == 100
@@ -175,3 +175,24 @@ def test_tinaco_consumir_negativo_invalido():
     t = Tinaco("T1", 1000, nivel=100)
     with pytest.raises(ValueError):
         t.consumir(-5)
+
+
+def test_paso_bomba_en_fallo_no_aporta():
+    t = Tinaco("T1", 1000)
+    b = Bomba("B1", 50, [t])
+    b.estado = FALLO
+    b.tiempo_falla_restante = 5.0
+    g = Grafo([b], [t], prob_falla=0.0)
+    g.paso(1.0)
+    assert t.nivel == 0          # en fallo no aporta y no hay consumo
+    assert b.estado == FALLO     # sigue averiada (5 - 1 = 4 s)
+
+
+def test_paso_aplica_consumo_a_los_tinacos():
+    t = Tinaco("T1", 1000, nivel=500, consumo=10.0)
+    b = Bomba("B1", 50, [t])
+    b.estado = REPOSO  # no aporta; solo se ve el consumo
+    g = Grafo([b], [t], prob_falla=0.0, umbral_arranque=0.30)
+    g.paso(1.0)
+    assert t.nivel == 490
+    assert b.estado == REPOSO

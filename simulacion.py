@@ -1,3 +1,5 @@
+import random
+
 # Estados posibles de una bomba (color del LED en las vistas).
 ENCENDIDA = "encendida"  # LED verde: bombeando
 REPOSO = "reposo"        # LED amarillo: sana pero inactiva
@@ -85,10 +87,15 @@ class Bomba:
 class Grafo:
     """Grafo de la simulación: bombas (fuentes) y tinacos (destinos)."""
 
-    def __init__(self, bombas, tinacos):
+    def __init__(self, bombas, tinacos, prob_falla=0.005, duracion_falla=5.0,
+                 umbral_arranque=0.30, semilla=None):
         self.bombas = list(bombas)
         self.tinacos = list(tinacos)
         self.tiempo = 0.0
+        self.prob_falla = prob_falla
+        self.duracion_falla = duracion_falla
+        self.umbral_arranque = umbral_arranque
+        self.aleatorio = random.Random(semilla)
 
     @property
     def terminado(self):
@@ -97,18 +104,26 @@ class Grafo:
     def paso(self, dt):
         if dt <= 0:
             raise ValueError("dt debe ser positivo")
-        # Acumular los aportes antes de aplicarlos, para que un tinaco
-        # compartido (alimentado por varias bombas) sume todos los caudales.
+        # 1. Actualizar el estado (LED) de cada bomba.
+        for bomba in self.bombas:
+            bomba.actualizar_estado(dt, self.prob_falla, self.duracion_falla,
+                                    self.umbral_arranque, self.aleatorio)
+        # 2. Acumular los aportes de las bombas encendidas. El tinaco
+        #    compartido suma los caudales de varias bombas.
         aportes = {id(t): 0.0 for t in self.tinacos}
         for bomba in self.bombas:
+            if bomba.estado != ENCENDIDA:
+                continue
             objetivos = bomba.destinos_no_llenos()
             if not objetivos:
                 continue
             litros = bomba.caudal * dt / len(objetivos)
             for t in objetivos:
                 aportes[id(t)] += litros
+        # 3. Aplicar el aporte y luego el consumo de cada tinaco.
         for t in self.tinacos:
             t.agregar(aportes[id(t)])
+            t.consumir(t.consumo * dt)
         self.tiempo += dt
 
 
