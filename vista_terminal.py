@@ -32,7 +32,7 @@ def _limpiar():
 
 
 def correr(grafo, dt=1.0, intervalo=0.2, max_pasos=10000):
-    """Anima la simulacion en la terminal hasta llenar todos los tinacos."""
+    """Anima la simulación en la terminal hasta llenar todos los tinacos."""
     pasos = 0
     while not grafo.terminado and pasos < max_pasos:
         _limpiar()
