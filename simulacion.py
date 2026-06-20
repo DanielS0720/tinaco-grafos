@@ -62,7 +62,7 @@ class Bomba:
         return self.estado == ENCENDIDA
 
     def actualizar_estado(self, dt, prob_falla, duracion_falla,
-                          umbral_arranque, aleatorio):
+                          umbral_arranque, umbral_paro, aleatorio):
         # 1. Si está averiada, descontar el temporizador de recuperación.
         if self.estado == FALLO:
             self.tiempo_falla_restante -= dt
@@ -75,12 +75,16 @@ class Bomba:
             self.estado = FALLO
             self.tiempo_falla_restante = duracion_falla
             return
-        # 3. Histéresis de arranque/paro.
+        # 3. Histéresis de arranque/paro. El paro usa un umbral fraccional
+        #    (no "lleno"): por el consumo un tinaco topado nunca llega al 100%,
+        #    así que exigir 100% dejaría la bomba encendida para siempre.
         if self.estado == REPOSO and any(
             t.porcentaje < umbral_arranque for t in self.destinos
         ):
             self.estado = ENCENDIDA
-        elif self.estado == ENCENDIDA and all(t.lleno for t in self.destinos):
+        elif self.estado == ENCENDIDA and all(
+            t.porcentaje >= umbral_paro for t in self.destinos
+        ):
             self.estado = REPOSO
 
 
@@ -88,13 +92,14 @@ class Grafo:
     """Grafo de la simulación: bombas (fuentes) y tinacos (destinos)."""
 
     def __init__(self, bombas, tinacos, prob_falla=0.005, duracion_falla=5.0,
-                 umbral_arranque=0.30, semilla=None):
+                 umbral_arranque=0.30, umbral_paro=0.95, semilla=None):
         self.bombas = list(bombas)
         self.tinacos = list(tinacos)
         self.tiempo = 0.0
         self.prob_falla = prob_falla
         self.duracion_falla = duracion_falla
         self.umbral_arranque = umbral_arranque
+        self.umbral_paro = umbral_paro
         self.aleatorio = random.Random(semilla)
 
     @property
@@ -107,7 +112,8 @@ class Grafo:
         # 1. Actualizar el estado (LED) de cada bomba.
         for bomba in self.bombas:
             bomba.actualizar_estado(dt, self.prob_falla, self.duracion_falla,
-                                    self.umbral_arranque, self.aleatorio)
+                                    self.umbral_arranque, self.umbral_paro,
+                                    self.aleatorio)
         # 2. Acumular los aportes de las bombas encendidas. El tinaco
         #    compartido suma los caudales de varias bombas.
         aportes = {id(t): 0.0 for t in self.tinacos}

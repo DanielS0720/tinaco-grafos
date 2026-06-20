@@ -49,7 +49,7 @@ def test_bomba_estado_inicial_reposo():
 def test_actualizar_estado_arranque_por_histeresis():
     t = Tinaco("T1", 1000)  # vacío: 0% < 30%
     b = Bomba("B1", 50, [t])
-    b.actualizar_estado(1.0, 0.0, 5.0, 0.30, _random.Random(0))
+    b.actualizar_estado(1.0, 0.0, 5.0, 0.30, 0.95, _random.Random(0))
     assert b.estado == ENCENDIDA
     assert b.activa
 
@@ -58,18 +58,29 @@ def test_actualizar_estado_paro_por_histeresis():
     t = Tinaco("T1", 1000, nivel=1000)  # lleno
     b = Bomba("B1", 50, [t])
     b.estado = ENCENDIDA
-    b.actualizar_estado(1.0, 0.0, 5.0, 0.30, _random.Random(0))
+    b.actualizar_estado(1.0, 0.0, 5.0, 0.30, 0.95, _random.Random(0))
+    assert b.estado == REPOSO
+
+
+def test_actualizar_estado_paro_con_tinaco_casi_lleno_por_consumo():
+    # Por el consumo, un tinaco topado nunca llega al 100%, pero al superar el
+    # umbral de paro (95%) la bomba debe apagarse igualmente.
+    t = Tinaco("T1", 1000, nivel=992)  # 99.2%, NO está 'lleno'
+    b = Bomba("B1", 50, [t])
+    b.estado = ENCENDIDA
+    assert not t.lleno
+    b.actualizar_estado(1.0, 0.0, 5.0, 0.30, 0.95, _random.Random(0))
     assert b.estado == REPOSO
 
 
 def test_actualizar_estado_fallo_forzado_y_recuperacion():
     t = Tinaco("T1", 1000)
     b = Bomba("B1", 50, [t])
-    b.actualizar_estado(1.0, 1.0, 5.0, 0.30, _random.Random(0))  # prob 1.0 -> falla
+    b.actualizar_estado(1.0, 1.0, 5.0, 0.30, 0.95, _random.Random(0))  # prob 1.0 -> falla
     assert b.estado == FALLO
     assert b.tiempo_falla_restante == 5.0
     for _ in range(5):  # 5 segundos sin volver a fallar
-        b.actualizar_estado(1.0, 0.0, 5.0, 0.30, _random.Random(0))
+        b.actualizar_estado(1.0, 0.0, 5.0, 0.30, 0.95, _random.Random(0))
     assert b.estado != FALLO
     assert b.estado in (REPOSO, ENCENDIDA)
 
@@ -214,3 +225,22 @@ def test_ciclo_vaciado_y_reencendido():
     g.paso(1.0)  # 20% < 30% -> arranca
     assert b.estado == ENCENDIDA
     assert t.nivel == 60  # 20 + 50 (aporte) - 10 (consumo)
+
+
+def test_grafo_default_sin_fallos_drena_y_reactiva():
+    # Sin fallos, las bombas deben apagarse al llenar (paro por umbral) y luego
+    # el consumo debe vaciar los tinacos hasta reactivar alguna bomba.
+    g = crear_grafo_default(semilla=0)
+    g.prob_falla = 0.0
+    for _ in range(500):  # llenar hasta que todas las bombas se apaguen
+        g.paso(1.0)
+        if all(b.estado == REPOSO for b in g.bombas):
+            break
+    assert all(b.estado == REPOSO for b in g.bombas)
+    nivel_al_apagar = max(t.nivel for t in g.tinacos)
+    for _ in range(500):  # el consumo vacía hasta reactivar
+        g.paso(1.0)
+        if any(b.estado == ENCENDIDA for b in g.bombas):
+            break
+    assert any(b.estado == ENCENDIDA for b in g.bombas)
+    assert min(t.nivel for t in g.tinacos) < nivel_al_apagar  # bajó de nivel
