@@ -127,11 +127,11 @@ class Grafo:
         self.tiempo += dt
 
 
-def crear_grafo_default():
+def crear_grafo_default(semilla=None):
     """Grafo del ejercicio: B1->T1,T2  y  B2->T2,T3 (T2 compartido)."""
-    t1 = Tinaco("T1", 1000)
-    t2 = Tinaco("T2", 1000)
-    t3 = Tinaco("T3", 1000)
+    t1 = Tinaco("T1", 1000, consumo=8.0)
+    t2 = Tinaco("T2", 1000, consumo=8.0)
+    t3 = Tinaco("T3", 1000, consumo=8.0)
     b1 = Bomba("B1", 50, [t1, t2])
     b2 = Bomba("B2", 40, [t2, t3])
-    return Grafo([b1, b2], [t1, t2, t3])
+    return Grafo([b1, b2], [t1, t2, t3], semilla=semilla)

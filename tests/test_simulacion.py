@@ -196,3 +196,21 @@ def test_paso_aplica_consumo_a_los_tinacos():
     g.paso(1.0)
     assert t.nivel == 490
     assert b.estado == REPOSO
+
+
+def test_grafo_default_tinacos_con_consumo():
+    g = crear_grafo_default()
+    assert all(t.consumo == 8.0 for t in g.tinacos)
+
+
+def test_ciclo_vaciado_y_reencendido():
+    t = Tinaco("T1", 100, nivel=100, consumo=10.0)
+    b = Bomba("B1", 50, [t])
+    g = Grafo([b], [t], prob_falla=0.0, umbral_arranque=0.30)
+    for _ in range(8):  # 100 -> 20 (30% no es < 30%, sigue en reposo)
+        g.paso(1.0)
+    assert b.estado == REPOSO
+    assert t.nivel == 20
+    g.paso(1.0)  # 20% < 30% -> arranca
+    assert b.estado == ENCENDIDA
+    assert t.nivel == 60  # 20 + 50 (aporte) - 10 (consumo)
