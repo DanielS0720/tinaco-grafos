@@ -33,3 +33,27 @@ def test_tinaco_agregar_negativo_invalido():
     t = Tinaco("T1", 1000)
     with pytest.raises(ValueError):
         t.agregar(-5)
+
+
+from simulacion import Bomba
+
+
+def test_bomba_activa_con_destino_no_lleno():
+    t = Tinaco("T1", 1000)
+    b = Bomba("B1", 50, [t])
+    assert b.activa
+    assert b.destinos_no_llenos() == [t]
+
+
+def test_bomba_inactiva_cuando_destinos_llenos():
+    t = Tinaco("T1", 1000)
+    t.agregar(1000)
+    b = Bomba("B1", 50, [t])
+    assert not b.activa
+    assert b.destinos_no_llenos() == []
+
+
+def test_bomba_caudal_invalido():
+    t = Tinaco("T1", 1000)
+    with pytest.raises(ValueError):
+        Bomba("B1", 0, [t])
