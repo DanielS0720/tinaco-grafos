@@ -111,3 +111,23 @@ def test_paso_dt_invalido():
     g = Grafo([b1], [t1])
     with pytest.raises(ValueError):
         g.paso(0)
+
+
+from simulacion import crear_grafo_default
+
+
+def test_grafo_default_topologia():
+    g = crear_grafo_default()
+    nombres_tinacos = sorted(t.nombre for t in g.tinacos)
+    nombres_bombas = sorted(b.nombre for b in g.bombas)
+    assert nombres_tinacos == ["T1", "T2", "T3"]
+    assert nombres_bombas == ["B1", "B2"]
+
+    b1 = next(b for b in g.bombas if b.nombre == "B1")
+    b2 = next(b for b in g.bombas if b.nombre == "B2")
+    assert sorted(t.nombre for t in b1.destinos) == ["T1", "T2"]
+    assert sorted(t.nombre for t in b2.destinos) == ["T2", "T3"]
+
+    t2_b1 = next(t for t in b1.destinos if t.nombre == "T2")
+    t2_b2 = next(t for t in b2.destinos if t.nombre == "T2")
+    assert t2_b1 is t2_b2
